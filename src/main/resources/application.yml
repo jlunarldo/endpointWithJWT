@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: ApiAuth
+  datasource:
+    url: jdbc:postgresql://dpg-d0hm7qruibrs739srhv0-a.oregon-postgres.render.com:5432/api_authentication
+    username: api_authentication_user
+    password: pLB4BBUACmUvdUinuTg1dMOP0r3Ns68C
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+    open-in-view: false
+  #Security Config
+  security:
+    #user: # modifico la contrase�a y usuario para consumir los endpoints, solo funciona uno a la vez as� que no es tan usado
+     # name: user
+      # password: hola
+#postgresql://api_authentication_user:pLB4BBUACmUvdUinuTg1dMOP0r3Ns68C@dpg-d0hm7qruibrs739srhv0-a.oregon-postgres.render.com/api_authentication
