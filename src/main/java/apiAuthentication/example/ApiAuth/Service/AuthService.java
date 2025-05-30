@@ -1,93 +1,63 @@
-/*
 package apiAuthentication.example.ApiAuth.Service;
+
+import apiAuthentication.example.ApiAuth.Entities.Rol;
+import apiAuthentication.example.ApiAuth.Entities.UserGeneral;
+import apiAuthentication.example.ApiAuth.Model.Request.LoginRequest;
+import apiAuthentication.example.ApiAuth.Model.Request.RegisterRequest;
+import apiAuthentication.example.ApiAuth.Model.Response.AuthResponse;
+import apiAuthentication.example.ApiAuth.Repository.RolRepository;
+import apiAuthentication.example.ApiAuth.Repository.UserGeneralRepository;
+import apiAuthentication.example.ApiAuth.Service.JwtService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
 
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
-    private final UserRepository repository;
-    private final TokenRepository tokenRepository;
-    private final PasswordEncoder passwordEncoder;
+    @Autowired
+    private final UserGeneralRepository userGeneralRepository;
     private final JwtService jwtService;
+    private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-
-    public TokenResponse register(final RegisterRequest request) {
-        final User user = User.builder()
-                .name(request.name())
-                .email(request.email())
-                .password(passwordEncoder.encode(request.password()))
+    @Autowired
+    private RolRepository rolRepository;
+    public AuthResponse login(LoginRequest request) {
+        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
+        UserDetails user= userGeneralRepository.findByUsername(request.getUsername()).orElseThrow();
+        String token=jwtService.getToken(user);
+        return AuthResponse.builder()
+                .token(token)
                 .build();
 
-        final User savedUser = repository.save(user);
-        final String jwtToken = jwtService.generateToken(savedUser);
-        final String refreshToken = jwtService.generateRefreshToken(savedUser);
-
-        saveUserToken(savedUser, jwtToken);
-        return new TokenResponse(jwtToken, refreshToken);
     }
 
-    public TokenResponse authenticate(final AuthRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.email(),
-                        request.password()
-                )
-        );
-        final User user = repository.findByEmail(request.email())
-                .orElseThrow();
-        final String accessToken = jwtService.generateToken(user);
-        final String refreshToken = jwtService.generateRefreshToken(user);
-        revokeAllUserTokens(user);
-        saveUserToken(user, accessToken);
-        return new TokenResponse(accessToken, refreshToken);
-    }
+    public AuthResponse register(RegisterRequest request) {
+        Rol rol = rolRepository.findByRoleEnum(request.getRoleEnum())
+                .orElseThrow(() -> new RuntimeException("Rol no encontrado: " + request.getRoleEnum()));
 
-    private void saveUserToken(User user, String jwtToken) {
-        final Token token = Token.builder()
-                .user(user)
-                .token(jwtToken)
-                .tokenType(Token.TokenType.BEARER)
-                .isExpired(false)
-                .isRevoked(false)
+
+        UserGeneral user = UserGeneral.builder()
+                .username(request.getUsername())
+                .password(passwordEncoder.encode( request.getPassword()))
+                .roles(Set.of(rol))
                 .build();
-        tokenRepository.save(token);
+
+        userGeneralRepository.save(user);
+
+        return AuthResponse.builder()
+                .token(jwtService.getToken(user))
+                .build();
+
     }
 
-    private void revokeAllUserTokens(final User user) {
-        final List<Token> validUserTokens = tokenRepository.findAllValidTokenByUser(user.getId());
-        if (!validUserTokens.isEmpty()) {
-            validUserTokens.forEach(token -> {
-                token.setIsExpired(true);
-                token.setIsRevoked(true);
-            });
-            tokenRepository.saveAll(validUserTokens);
-        }
-    }
-
-    public TokenResponse refreshToken(@NotNull final String authentication) {
-
-        if (authentication == null || !authentication.startsWith("Bearer ")) {
-            throw new IllegalArgumentException("Invalid auth header");
-        }
-        final String refreshToken = authentication.substring(7);
-        final String userEmail = jwtService.extractUsername(refreshToken);
-        if (userEmail == null) {
-            return null;
-        }
-
-        final User user = this.repository.findByEmail(userEmail).orElseThrow();
-        final boolean isTokenValid = jwtService.isTokenValid(refreshToken, user);
-        if (!isTokenValid) {
-            return null;
-        }
-
-        final String accessToken = jwtService.generateRefreshToken(user);
-        revokeAllUserTokens(user);
-        saveUserToken(user, accessToken);
-
-        return new TokenResponse(accessToken, refreshToken);
-    }
-}*/
+}

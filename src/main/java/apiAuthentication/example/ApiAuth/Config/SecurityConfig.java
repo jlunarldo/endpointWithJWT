@@ -2,6 +2,7 @@ package apiAuthentication.example.ApiAuth.Config;
 
 
 import apiAuthentication.example.ApiAuth.Impl.UserDetailImpl;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,15 +22,19 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 @EnableMethodSecurity //Permite trabajar con anotaciones de PreAuthorize los authorizeHttpRequests
 public class SecurityConfig {
 
+    private final AuthenticationProvider authenticationProvider;
+    private final JwtAuthenticationToken jwtAuthenticationToken;
 
     /*//Configuración del filtro
     @Bean
@@ -61,7 +66,8 @@ public class SecurityConfig {
                 .csrf(crsf -> crsf.disable())
                 .httpBasic(Customizer.withDefaults()) // para que podamos consumir la API, solo nos va a pedir usuario y contraseña,
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // stateless signifca que no vamos a guardar el estado de la sesión en memoria, sino que la duración del usuario logueado va a depender de la duración del token de autorización
-
+                .authenticationProvider(authenticationProvider)
+                .addFilterBefore(jwtAuthenticationToken, UsernamePasswordAuthenticationFilter.class)
                 .build();
 
     }
@@ -85,29 +91,4 @@ public class SecurityConfig {
          return provider;
     }
 
-
-    //definimos unos usuarios para pruebas
-
-    /*@Bean
-    public  UserDetailsService userDetailsService(){
-        List<UserDetails> userDetailsList= new ArrayList<>();
-
-        userDetailsList.add(
-                User.withUsername("Santiago")
-                        .password("{noop}1234")
-                        .roles("ADMIN")
-                        .authorities("READ", "CREATE")
-                        .build()
-        );
-
-        userDetailsList.add(
-                User.withUsername("Daniel")
-                        .password("{noop}dan")
-                        .roles("ADMIN")
-                        .authorities("READ", "CREATE")
-                        .build()
-        );
-
-        return new InMemoryUserDetailsManager(userDetailsList);
-    }*/
 }
